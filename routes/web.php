@@ -23,46 +23,32 @@ Route::get('/posts', function () {
             $document->slug
         );
     }
-
     return view('posts', [
         'posts' => $posts
     ]);
 });*/
 
-//This is another implementation of the route /posts using array_map
+//This is another implementation of the route /posts using collection and mapping
 Route::get('/posts', function () {
-    $posts = collect(File::files(resource_path("posts")))
-        ->map(fn($file) => YamlFrontMatter::parseFile($file))
-        ->map(fn($document) => new Post(
-            $document->title,
-            $document->excerpt,
-            $document->date,
-            $document->body(),
-            $document->slug
-        ));
-
     return view('posts', [
-        'posts' => $posts
+        'posts' => Post::all()
     ]);
 });
 
-
 Route::get('/posts/{post}', function ($slug) {
-
-    return view('post', [
-        'post' => Post::find($slug)
-    ]);
     /*
     $path = __DIR__ . "/../resources/posts/{$slug}.html";
     if (! file_exists($path)){
-        //abort(404);
         return redirect('/posts');
     }
-    $post = cache()->remember("posts.{slug}", now()->addDay(), function ()  use($path){
-        return file_get_contents($path);
-    });
-
     return view('post', [
-        'post' => $post
+        'post' => cache()->remember("posts.{slug}", now()->addDay(), function ()  use($path){
+            return file_get_contents($path);
+        })
     ]);*/
-})->where('post', '[A-z_\-]+'); //Set a regular expression requirement on the rout
+    return view('post', [
+        'post' => Post::findorFail($slug)
+
+    ]);
+});
+// ->where('post', '[A-z_\-]+')  to Set a regular expression requirement on the rout

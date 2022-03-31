@@ -5,6 +5,7 @@ use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\File;
 use Prophecy\Promise\ReturnPromise;
+use Spatie\YamlFrontMatter\YamlFrontMatter;
 
 class Post
 {
@@ -30,23 +31,37 @@ class Post
 
 
     public static function all() {
-        $files = File::files(resource_path("posts/"));
-        return array_map(function($file) {
-            return $file->getContents();
-        },$files);
+        return  cache()->rememberForever('posts.all',function (){
+            return collect(File::files(resource_path("posts")))
+                ->map(fn($file) => YamlFrontMatter::parseFile($file))
+                ->map(fn($document) => new Post(
+                    $document->title,
+                    $document->excerpt,
+                    $document->date,
+                    $document->body(),
+                    $document->slug
+                ))
+                ->sortByDesc('date');
+        });
     }
 
-
-    /**
-     * @throws Exception
-     */
-    public static function find ($slug) {
+    public static function find($slug) {
+        return static::all()->firstWhere('slug',$slug);
+        /*
         if (! file_exists($path = resource_path("posts/{$slug}.html"))){
             //return redirect('/posts');
             throw new ModelNotFoundException();
         }
         return cache()->remember("posts.{$slug}", now()->addDay(), fn() =>file_get_contents($path));
             //return file_get_contents($path);
+        */
     }
 
+    public static function findorFail ($slug) {
+        $post = static::find($slug);
+        if(!$post){
+            throw new ModelNotFoundException();
+        }
+        return $post;
+    }
 }
